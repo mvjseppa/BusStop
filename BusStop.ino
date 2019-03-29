@@ -19,7 +19,7 @@ Adafruit_SSD1306 display(OLED_RESET);
 class BusStopClient{
 private:
   const String url = "http://api.digitransit.fi/routing/v1/routers/hsl/index/graphql";
-  const String query = "{\"query\": \"{stop(id: \\\"HSL:1310146\\\") {stoptimesWithoutPatterns {realtimeArrival headsign}}}\"}";
+  const String query = "{\"query\": \"{stop(id: \\\"HSL:1310146\\\") {stoptimesWithoutPatterns {realtimeArrival headsign trip {route {shortName}}}}}\"}";
   StaticJsonDocument<1024> jsonDoc;
 
 public:
@@ -68,12 +68,16 @@ public:
     return String(time);
   }
 
-  String getDestination(){
+  String getDetails(){
     const char* dest = jsonDoc["data"]["stop"]
         ["stoptimesWithoutPatterns"][0]
         ["headsign"];
+
+    const char* line = jsonDoc["data"]["stop"]
+        ["stoptimesWithoutPatterns"][0]
+        ["trip"]["route"]["shortName"];
   
-    return String(dest);
+    return String(line) + ": " + String(dest);
   }
 };
 
@@ -96,7 +100,7 @@ void setup() {
 }
 
 #define POST_INTERVAL 200 
-#define SCREEN_WIDTH 60
+#define SCREEN_WIDTH 64
 
 BusStopClient busClient;
 
@@ -108,10 +112,10 @@ void loop() {
   
   busClient.updateInfo();
 
-  String busTime = "123";//parseBusTime(payload);
-  String busDestination = "Alakurtti";//parseBusDestination(payload);
+  String busTime = busClient.getTime();
+  String busDetails = busClient.getDetails();
 
-  int textWidth = busDestination.length() * 7;
+  int textWidth = busDetails.length() * 6;
   int maxScroll = max(textWidth - SCREEN_WIDTH, 0);
   Serial.println(textWidth);
 
@@ -123,11 +127,7 @@ void loop() {
     
     scroll += scrollDelta;
     
-    showTextOnDisplay(
-      busClient.getTime(), 
-      busClient.getDestination(), 
-      scroll
-    );
+    showTextOnDisplay(busTime, busDetails, scroll);
     delay(50);
   }
 }
