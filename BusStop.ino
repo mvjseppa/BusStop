@@ -25,8 +25,7 @@ void setup() {
   
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(500);
-    Serial.print(".");
+    loadingAnimation();
   }
   Serial.println();
   Serial.print("Connected, IP address: ");
@@ -145,4 +144,19 @@ String timeStringFromSeconds(int seconds){
   char time[8];
   sprintf(time, "%02d:%02d:%02d", hours, minutes, seconds);
   return String(time);
+}
+
+const char animation[5][6] = {
+  {"  .  "},
+  {"  o  "},
+  {"  O  "},
+  {" {.} "},
+  {"{ . }"}
+};
+
+void loadingAnimation(){
+  for(int i=0; i<5; i++){
+    showTextOnDisplay(animation[i], "", 0);
+    delay(50);
+  }  
 }
