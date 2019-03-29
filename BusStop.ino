@@ -7,8 +7,8 @@
 /*
  WIFI CONFIGURATION
  */
-char SSID[] = "uuid";
-char pwd[] = "pwd";
+char SSID[] = "";
+char pwd[] = "";
 
 
 #define POST_INTERVAL_SECONDS 10
@@ -22,10 +22,13 @@ char pwd[] = "pwd";
 Adafruit_SSD1306 display(OLED_RESET); 
 
 void setup() {
-  // ---------- WIFI
   Serial.begin(115200);
   WiFi.begin(SSID, pwd);
   Serial.print("Connecting");
+
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 64x48)
+  display.display();
+  
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
@@ -35,18 +38,15 @@ void setup() {
   Serial.print("Connected, IP address: ");
   Serial.println(WiFi.localIP());
 
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 64x48)
-  display.display();
 }
 
 #define SCREEN_WIDTH 60
-int timer = 0;
 int scroll = SCREEN_WIDTH;
 int scrollDelta = 1;
 
 void loop() {
   
-  timer = POST_INTERVAL_SECONDS * 20;
+  static int timer = POST_INTERVAL_SECONDS * 20;
   String payload = queryBusStop();
 
   String busTime = parseBusTime(payload);
@@ -93,27 +93,25 @@ void reconnect() {
   Serial.println("Connected!");
 }  
 
+const String url = "http://api.digitransit.fi/routing/v1/routers/hsl/index/graphql";
+const String query = "{\"query\": \"{stop(id: \\\"HSL:1310146\\\") {stoptimesWithoutPatterns {realtimeArrival headsign}}}\"}";
+
 String queryBusStop()
 {
-  // first check the wifi status
   if (WiFi.status() != WL_CONNECTED) {  
     reconnect();
   }  
 
-   HTTPClient http;    //Declare object of class HTTPClient
- 
-   http.begin("http://api.digitransit.fi/routing/v1/routers/hsl/index/graphql");      //Specify request destination
-   http.addHeader("Content-Type", "application/json");  //Specify content-type header
- 
-   int httpCode = http.POST(
-     "{\"query\": \"{stop(id: \\\"HSL:1310146\\\") {stoptimesWithoutPatterns {realtimeArrival headsign}}}\"}"
-   );   //Send the request
-   String payload = http.getString();                  //Get the response payload
+   HTTPClient http;
+   http.begin(url);
+   http.addHeader("Content-Type", "application/json");
+   int httpCode = http.POST(query);   
+   String payload = http.getString();
 
-   Serial.println(httpCode);   //Print HTTP return code
-   Serial.println(payload);    //Print request response payload
+   Serial.println(httpCode);
+   Serial.println(payload);
  
-   http.end();  //Close connection
+   http.end();
 
    return payload;
 }
