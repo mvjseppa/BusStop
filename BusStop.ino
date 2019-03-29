@@ -91,7 +91,7 @@ void setup() {
   
   while (WiFi.status() != WL_CONNECTED)
   {
-    loadingAnimation();
+    wifiAnimation();
   }
   Serial.println();
   Serial.print("Connected, IP address: ");
@@ -157,17 +157,18 @@ void reconnect() {
   Serial.println("Connected!");
 }
 
-const char animation[5][6] = {
-  {"  .  "},
-  {"  o  "},
-  {"  O  "},
-  {" {.} "},
-  {"{ . }"}
-};
-
-void loadingAnimation(){
+void wifiAnimation(){
+  static const char animation[5][6] = {
+    {"  .  "},
+    {"  o  "},
+    {"  O  "},
+    {" {.} "},
+    {"{ . }"}
+  };
+  static const char* animation2 = ".oOo..oOo..oOo..oOo.";
+  
   for(int i=0; i<5; i++){
-    showTextOnDisplay(animation[i], "", 0);
+    showTextOnDisplay(animation[i], animation2 + i, 0);
     delay(50);
   }  
 }
