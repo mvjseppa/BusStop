@@ -165,7 +165,7 @@ void wifiAnimation(){
     {" {.} "},
     {"{ . }"}
   };
-  static const char* animation2 = ".oOo..oOo..oOo..oOo.";
+  static const char* animation2 = ".oOo.oOo.oOo.oOo.";
   
   for(int i=0; i<5; i++){
     showTextOnDisplay(animation[i], animation2 + i, 0);
