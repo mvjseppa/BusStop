@@ -157,33 +157,6 @@ void reconnect() {
   Serial.println("Connected!");
 }
 
-
-/*
-String parseBusTime(String payload){
-  String fieldname = "realtimeArrival";
-  int startIdx = payload.indexOf(fieldname) + fieldname.length() + 2;
-  int endIdx = payload.indexOf(',', startIdx);
-  
-  String slicedPayload = payload.substring(startIdx, endIdx);
-
-  Serial.println(slicedPayload);
-  
-  return timeStringFromSeconds(slicedPayload.toInt());
-}
-
-
-String parseBusDestination(String payload){
-  String fieldname = "headsign";
-  int startIdx = payload.indexOf(fieldname) + fieldname.length() + 3;
-  int endIdx = payload.indexOf('"', startIdx);
-  
-  String destination = payload.substring(startIdx, endIdx);
-
-  Serial.println(destination);
-  
-  return destination;
-}
-*/
 const char animation[5][6] = {
   {"  .  "},
   {"  o  "},
