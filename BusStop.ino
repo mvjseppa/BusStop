@@ -10,12 +10,6 @@
 char SSID[] = "";
 char pwd[] = "";
 
-
-#define POST_INTERVAL_SECONDS 10
-
-/*
- * Oled screen
- */
 #define OLED_RESET 0  // GPIO0
 
 // driver is for 128 by 64 so we need some tweaking
@@ -40,8 +34,9 @@ void setup() {
 
 }
 
+#define POST_INTERVAL_SECONDS 10
 #define SCREEN_WIDTH 60
-int scroll = SCREEN_WIDTH;
+int scroll = 0;
 int scrollDelta = 1;
 
 void loop() {
@@ -52,11 +47,11 @@ void loop() {
   String busTime = parseBusTime(payload);
   String busDestination = parseBusDestination(payload);
 
-  int textWidth = busDestination.length() * 6;
+  int maxScroll = busDestination.length() * 6 - SCREEN_WIDTH;
   
   while(timer--){
-    if(scroll > textWidth) scrollDelta = -1;
-    else if(scroll < SCREEN_WIDTH) scrollDelta = 1;
+    if(scroll > maxScroll) scrollDelta = -1;
+    else if(scroll < 0) scrollDelta = 1;
     scroll += scrollDelta;
 
     Serial.print("scroll:");
@@ -70,12 +65,11 @@ void loop() {
 
 void showTextOnDisplay(String msg, String msg2, int scroll){
   display.clearDisplay();
-  // text display tests
   display.setTextSize(2);
   display.setTextColor(WHITE);
   display.setCursor(33,8);
   display.print(msg);
-  display.setCursor(96 - scroll,24);
+  display.setCursor(33 - scroll,24);
   display.setTextSize(1);
   display.print(msg2);
   display.display();
