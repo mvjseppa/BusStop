@@ -108,7 +108,7 @@ void loop() {
 
   static int scroll = 0;
   static int scrollDelta = 1;
-  static int timer = POST_INTERVAL;
+  int timer = POST_INTERVAL;
   
   busClient.updateInfo();
 
