@@ -2,6 +2,7 @@
 #include <ESP8266HTTPClient.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>
 
 
 /*
@@ -14,6 +15,67 @@ char pwd[] = "";
 
 // driver is for 128 by 64 so we need some tweaking
 Adafruit_SSD1306 display(OLED_RESET); 
+
+class BusStopClient{
+private:
+  const String url = "http://api.digitransit.fi/routing/v1/routers/hsl/index/graphql";
+  const String query = "{\"query\": \"{stop(id: \\\"HSL:1310146\\\") {stoptimesWithoutPatterns {realtimeArrival headsign}}}\"}";
+  StaticJsonDocument<1024> jsonDoc;
+
+public:
+  bool updateInfo()
+  {
+    if (WiFi.status() != WL_CONNECTED) {  
+      Serial.println("no wifi!");
+      return false;
+     }  
+
+     HTTPClient http;
+     http.begin(url);
+     http.addHeader("Content-Type", "application/json");
+     int httpCode = http.POST(query);   
+     String payload = http.getString();
+  
+     Serial.println(httpCode);
+     Serial.println(payload);
+   
+     http.end();
+  
+     auto error = deserializeJson(jsonDoc, payload.c_str());
+
+     if(error){
+      Serial.println("json error");
+      Serial.println(error.c_str());
+      return false;
+     }
+     
+     return true;
+  }
+
+  String getTime(){
+    int seconds = jsonDoc["data"]["stop"]
+        ["stoptimesWithoutPatterns"][0]
+        ["realtimeArrival"];
+  
+    int minutes = seconds / 60;
+    seconds = seconds % 60;
+
+    int hours = minutes / 60 % 24;
+    minutes = minutes % 60;
+
+    char time[8];
+    sprintf(time, "%02d:%02d:%02d", hours, minutes, seconds);
+    return String(time);
+  }
+
+  String getDestination(){
+    const char* dest = jsonDoc["data"]["stop"]
+        ["stoptimesWithoutPatterns"][0]
+        ["headsign"];
+  
+    return String(dest);
+  }
+};
 
 void setup() {
   Serial.begin(115200);
@@ -33,30 +95,39 @@ void setup() {
 
 }
 
-#define POST_INTERVAL_SECONDS 10
+#define POST_INTERVAL 200 
 #define SCREEN_WIDTH 60
-int scroll = 0;
-int scrollDelta = 1;
+
+BusStopClient busClient;
 
 void loop() {
+
+  static int scroll = 0;
+  static int scrollDelta = 1;
+  static int timer = POST_INTERVAL;
   
-  static int timer = POST_INTERVAL_SECONDS * 20;
-  String payload = queryBusStop();
+  busClient.updateInfo();
 
-  String busTime = parseBusTime(payload);
-  String busDestination = parseBusDestination(payload);
+  String busTime = "123";//parseBusTime(payload);
+  String busDestination = "Alakurtti";//parseBusDestination(payload);
 
-  int maxScroll = busDestination.length() * 6 - SCREEN_WIDTH;
+  int textWidth = busDestination.length() * 7;
+  int maxScroll = max(textWidth - SCREEN_WIDTH, 0);
+  Serial.println(textWidth);
+
+  if(maxScroll == 0) scrollDelta = 0;
   
   while(timer--){
     if(scroll > maxScroll) scrollDelta = -1;
     else if(scroll < 0) scrollDelta = 1;
-    scroll += scrollDelta;
-
-    Serial.print("scroll:");
-    Serial.println(scroll);
     
-    showTextOnDisplay(busTime, busDestination, scroll);
+    scroll += scrollDelta;
+    
+    showTextOnDisplay(
+      busClient.getTime(), 
+      busClient.getDestination(), 
+      scroll
+    );
     delay(50);
   }
 }
@@ -84,31 +155,10 @@ void reconnect() {
       Serial.print(".");
   }  
   Serial.println("Connected!");
-}  
-
-const String url = "http://api.digitransit.fi/routing/v1/routers/hsl/index/graphql";
-const String query = "{\"query\": \"{stop(id: \\\"HSL:1310146\\\") {stoptimesWithoutPatterns {realtimeArrival headsign}}}\"}";
-
-String queryBusStop()
-{
-  if (WiFi.status() != WL_CONNECTED) {  
-    reconnect();
-  }  
-
-   HTTPClient http;
-   http.begin(url);
-   http.addHeader("Content-Type", "application/json");
-   int httpCode = http.POST(query);   
-   String payload = http.getString();
-
-   Serial.println(httpCode);
-   Serial.println(payload);
- 
-   http.end();
-
-   return payload;
 }
 
+
+/*
 String parseBusTime(String payload){
   String fieldname = "realtimeArrival";
   int startIdx = payload.indexOf(fieldname) + fieldname.length() + 2;
@@ -133,19 +183,7 @@ String parseBusDestination(String payload){
   
   return destination;
 }
-
-String timeStringFromSeconds(int seconds){
-  int minutes = seconds / 60;
-  seconds = seconds % 60;
-
-  int hours = minutes / 60;
-  minutes = minutes % 60;
-
-  char time[8];
-  sprintf(time, "%02d:%02d:%02d", hours, minutes, seconds);
-  return String(time);
-}
-
+*/
 const char animation[5][6] = {
   {"  .  "},
   {"  o  "},
