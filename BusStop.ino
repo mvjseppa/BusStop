@@ -18,9 +18,14 @@ Adafruit_SSD1306 display(OLED_RESET);
 
 class BusStopClient{
 private:
-  const String url = "http://api.digitransit.fi/routing/v1/routers/hsl/index/graphql";
+  const String timeUrl = "http://worldtimeapi.org/api/timezone/Europe/Helsinki";
+  const String hslUrl = "http://api.digitransit.fi/routing/v1/routers/hsl/index/graphql";
   const String query = "{\"query\": \"{stop(id: \\\"HSL:1310146\\\") {stoptimesWithoutPatterns {realtimeArrival headsign trip {route {shortName}}}}}\"}";
   StaticJsonDocument<1024> jsonDoc;
+  HTTPClient http;
+  int realTimeSeconds = 0;
+  int hslSeconds = 0;
+  String details;
 
 public:
   bool updateInfo()
@@ -30,8 +35,15 @@ public:
       return false;
      }  
 
-     HTTPClient http;
-     http.begin(url);
+     queryHslApi();
+     wdt_reset(); //HTTP calls are slow; need to kick the dog.
+     queryWorldTimeApi();
+     
+     return true;
+  }
+
+  bool queryHslApi(){
+     http.begin(hslUrl);
      http.addHeader("Content-Type", "application/json");
      int httpCode = http.POST(query);   
      String payload = http.getString();
@@ -40,7 +52,6 @@ public:
      Serial.println(payload);
    
      http.end();
-  
      auto error = deserializeJson(jsonDoc, payload.c_str());
 
      if(error){
@@ -48,27 +59,60 @@ public:
       Serial.println(error.c_str());
       return false;
      }
-     
+
+     hslSeconds = jsonDoc["data"]["stop"]
+        ["stoptimesWithoutPatterns"][0]
+        ["realtimeArrival"];
+
+     setDetails();
+
      return true;
   }
 
-  String getTime(){
-    int seconds = jsonDoc["data"]["stop"]
-        ["stoptimesWithoutPatterns"][0]
-        ["realtimeArrival"];
-  
-    int minutes = seconds / 60;
-    seconds = seconds % 60;
+  bool queryWorldTimeApi(){
+    http.begin(timeUrl);
+    http.addHeader("Content-Type", "application/json");
+    int httpCode = http.GET();
+    String payload = http.getString();
 
-    int hours = minutes / 60 % 24;
-    minutes = minutes % 60;
+    Serial.println(httpCode);
+    Serial.println(payload);
 
-    char time[8];
-    sprintf(time, "%02d:%02d:%02d", hours, minutes, seconds);
-    return String(time);
+    http.end();
+
+    auto error = deserializeJson(jsonDoc, payload.c_str());
+
+    if(error){
+      Serial.println("json error");
+      Serial.println(error.c_str());
+      return false;
+    }
+
+    int Y, M, D, h, m;
+    float s; 
+    sscanf(jsonDoc["datetime"], 
+      "%d-%d-%dT%d:%d:%f", 
+      &Y, &M, &D, &h, &m, &s);
+      
+    realTimeSeconds = (h * 60 + m)*60 + s;
+    Serial.print("rt: ");
+    Serial.print(h);
+    Serial.print(m);
+    Serial.println(s);
+    Serial.println(realTimeSeconds);
+    
   }
 
-  String getDetails(){
+  String getTime(){
+    return String((hslSeconds - realTimeSeconds) / 60) + " min";
+  }
+
+  String& getDetails(){
+    return details;
+  }
+  
+  String setDetails(){
+    
     const char* dest = jsonDoc["data"]["stop"]
         ["stoptimesWithoutPatterns"][0]
         ["headsign"];
@@ -77,7 +121,7 @@ public:
         ["stoptimesWithoutPatterns"][0]
         ["trip"]["route"]["shortName"];
   
-    return String(line) + ": " + String(dest);
+    details = String(line) + ": " + String(dest);
   }
 };
 
