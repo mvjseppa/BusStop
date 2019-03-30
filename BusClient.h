@@ -12,7 +12,6 @@ public:
      }  
 
      queryHslApi();
-     wdt_reset(); //HTTP calls are slow; need to kick the dog.
      queryWorldTimeApi();
      
      return true;
@@ -38,15 +37,17 @@ private:
   String details;
 
   bool queryHslApi(){
+     Serial.println(String("POST") + hslUrl);
      http.begin(hslUrl);
      http.addHeader("Content-Type", "application/json");
      int httpCode = http.POST(query);   
      String payload = http.getString();
-  
+     
      Serial.println(httpCode);
      Serial.println(payload);
    
      http.end();
+
      auto error = deserializeJson(jsonDoc, payload.c_str());
 
      if(error){
@@ -65,6 +66,7 @@ private:
   }
 
   bool queryWorldTimeApi(){
+    Serial.println(String("GET") + timeUrl);
     http.begin(timeUrl);
     http.addHeader("Content-Type", "application/json");
     int httpCode = http.GET();
@@ -75,6 +77,7 @@ private:
 
     http.end();
 
+    wdt_reset();
     auto error = deserializeJson(jsonDoc, payload.c_str());
 
     if(error){
@@ -90,11 +93,7 @@ private:
       &Y, &M, &D, &h, &m, &s);
       
     realTimeSeconds = (h * 60 + m)*60 + s;
-    Serial.print("rt: ");
-    Serial.print(h);
-    Serial.print(m);
-    Serial.println(s);
-    Serial.println(realTimeSeconds);
+    Serial.println(String("Real-time in seconds: ") + realTimeSeconds);
   }
 
   String setDetails(){
